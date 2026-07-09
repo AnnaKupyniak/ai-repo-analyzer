@@ -1,0 +1,54 @@
+{
+  "summary": "Friends Calendar is a full-stack real-time collaborative calendar and messaging web application. It enables friends and groups to manage shared calendars, chat in real-time, and store shared memories (posts with descriptions and images). The backend is built with Node.js, Express, MongoDB (Mongoose), and Socket.IO, while the frontend is built with React, Vite, Material-UI, and Socket.IO client.",
+  "projectStructure": [
+    "backend/ - Node.js Express server with Socket.IO and Mongoose models",
+    "backend/config/ - Database and environmental configuration",
+    "backend/controllers/ - Controller logic for authentication, events, groups, memories, and messages",
+    "backend/middleware/ - Auth guards, error handling, file uploads, and request validation",
+    "backend/models/ - Mongoose schemas for User, Group, Event, Memory, Message, and Friendship",
+    "backend/routes/ - Express API endpoints routing to controllers",
+    "frontend/ - Vite React frontend SPA",
+    "frontend/src/api/ - Axios client instance and API configuration",
+    "frontend/src/components/ - Reusable UI components (Button, Calendar, Header, Modal)",
+    "frontend/src/context/ - React Context providers for Auth, Events, Friends, and Memories",
+    "frontend/src/features/ - Feature-specific React components (categories, events, friends, memories)",
+    "frontend/src/pages/ - Main application pages (Chat, Comments, Home, Login, Register, Profile, MyCalendar)"
+  ],
+  "technologies": [
+    "React (v19.2.0) - Frontend UI rendering framework",
+    "Vite (v7.2.4) - Frontend build tool and development server",
+    "Node.js & Express (v5.2.1) - Backend API server, utilizing Express 5 for native async error handling",
+    "MongoDB & Mongoose (v9.1.2) - Database and Object Data Modeling (ODM) library",
+    "Socket.IO (v4.8.3) - Real-time bidirectional WebSocket communication",
+    "Axios (v1.13.5) - HTTP client for API communication",
+    "Material-UI (MUI v7.3.6) & Material Pickers - UI components and calendar controls",
+    "Multer (v2.1.0) - Multipart form data parser for uploading avatars and memory photos"
+  ],
+  "strengths": [
+    "Express 5 adoption allows native async error handling, reducing repetitive try-catch blocks in route handlers.",
+    "Well-structured dynamic relationships in Mongoose using refPath to easily link events and memories to both Friendships and Groups.",
+    "Efficient search indexing on User schema (username/fullName text indexes) and Memory schema (tags, text indexes on title/description/place).",
+    "Decoupled React architecture separating context state logic from presentation components.",
+    "Responsive styling for major features like calendar, chat, and memories with clean separation of CSS and JSX."
+  ],
+  "issues": [
+    "Broken Add Member Payload: In FriendsContext.jsx, addMembersToGroup sends { userIds }, but backend groupController.js expects { members }, resulting in newMembers being [undefined] and throwing a Mongoose CastError on save, breaking the add member feature.",
+    "Critical Socket.IO Impersonation vulnerability: The WebSocket server does not authenticate connections or verify the JWT. The send-message event trusts client-supplied senderId and senderInfo, allowing any client to send messages impersonating any user.",
+    "Broken Object Level Authorization (BOLA/IDOR) on group messages: GET /api/messages?groupId=id does not check if req.user is a member of the requested group, permitting any authenticated user to read all messages from any group.",
+    "Broken Object Level Authorization (BOLA/IDOR) on events: POST /api/events creates events for any Friendship or Group without checking if the creator is actually a member, allowing unauthorized event injections.",
+    "Schema-Logic Mismatch on Categories: Group categories schema is defined as categories: [ { type: [String] } ], making it an array of subdocuments. But backend groupController.js checks if a category is present using group.categories.includes(category) (which checks if an array of objects contains a string). This check always returns false, leading to duplicate category insertions and querying failures.",
+    "Mismatched Group validation: validateGroupInput in validation.js validates 'title' instead of 'name'. Since the frontend sends 'name', the group name length and format are never validated, rendering the middleware ineffective.",
+    "Missing Schema fields for password resets: getResetPasswordToken in User.js sets resetPasswordToken and resetPasswordExpire on the Mongoose document, but these fields are not defined in the UserSchema, which will cause Mongoose to strip them out on save.",
+    "Frontend Axios Client Inconsistency: Bypassing the configured apiClient in FriendsContext.jsx and Chat.jsx (using vanilla axios or fetch directly) bypasses 401/403 response interceptors, preventing automated user redirection on session expiry.",
+    "Dead Frontend Dependency: Multer is listed as a frontend dependency in package.json, which is a Node.js-only library and should not reside in client bundle files."
+  ],
+  "recommendations": [
+    "Align Add Member payload: Update either FriendsContext.jsx to send { members: userIds } or update groupController.js to extract { userIds } instead of { members }.",
+    "Implement Socket.IO Authentication: Secure Socket.IO connections by implementing a middleware using socket.io's use() method to verify the JWT from the request cookie, and use the verified socket.userId in all events.",
+    "Enforce Group Membership checks: Add checks in GET /api/messages and POST /api/events to ensure the req.user.id is a member of the group/friendship being accessed or updated.",
+    "Fix Group Categories schema: Simplify categories in Group.js to categories: { type: [String], default: [] } to align with Friendship.js and ensure includes() works as expected.",
+    "Correct validation fields: Update validateGroupInput in validation.js to validate 'name' instead of 'title'.",
+    "Add fields to User Schema: Include resetPasswordToken (String) and resetPasswordExpire (Date) in the UserSchema in User.js.",
+    "Refactor frontend requests: Standardize all HTTP requests in FriendsContext.jsx and Chat.jsx to use apiClient instead of importing axios or fetch directly, ensuring consistent session management."
+  ]
+}
